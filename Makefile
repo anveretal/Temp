@@ -34,5 +34,8 @@ greeting: plugins/greeting/greeting.c src/include/master.h | install/plugins
 proxy: src/include/master.h install/libconfig.a install/liblogger.so src/master.c | install
 	$(CC) $(CFLAGS) -rdynamic src/master.c -o install/proxy -L./install -lconfig -llogger -ldl
 
+debug_proxy:
+	ln -s proxy $@
+
 clean:
 	rm -rf install
