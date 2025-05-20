@@ -120,13 +120,28 @@ int main(int argc, char* argv[]) {
 
 // Загрузка одного плагина
 static int load_plugin(const char* plugin_name, Plugin* plugin) {
-    char plugin_path[PATH_MAX];
-    snprintf(plugin_path, sizeof(plugin_path), "install/plugins/%s.so", plugin_name);
+    // Убедимся, что имя плагина не содержит недопустимых символов
+    char clean_name[256];
+    size_t j = 0;
+    for (size_t i = 0; plugin_name[i] && j < sizeof(clean_name)-1; i++) {
+        if (isalnum(plugin_name[i]) || plugin_name[i] == '_' || plugin_name[i] == '-') {
+            clean_name[j++] = plugin_name[i];
+        }
+    }
+    clean_name[j] = '\0';
+    
+    if (j == 0) {
+        LOG(STDERR, LOG_ERROR, "Invalid plugin name: %s", plugin_name);
+        return 1;
+    }
 
-    // Открываем shared library
+    char plugin_path[PATH_MAX];
+    snprintf(plugin_path, sizeof(plugin_path), "install/plugins/%s.so", clean_name);
+
+    // Дальше оригинальная реализация load_plugin...
     plugin->handle = dlopen(plugin_path, RTLD_NOW);
     if (!plugin->handle) {
-        LOG(STDERR, LOG_ERROR, "Failed to load plugin %s: %s", plugin_name, dlerror());
+        LOG(STDERR, LOG_ERROR, "Failed to load plugin %s: %s", clean_name, dlerror());
         return 1;
     }
 
@@ -187,17 +202,32 @@ static void unload_plugin(Plugin* plugin) {
 // Получение списка плагинов из конфига
 static char** get_plugins_from_config(int* count) {
     *count = 0;
+    char** plugins = NULL;
     
-    // Сначала проверяем переменную окружения
+    // 1. Проверяем переменную окружения
     const char* env_plugins = getenv("PROXY_MASTER_PLUGINS");
     if (env_plugins) {
         char* env_copy = strdup(env_plugins);
         char* token = strtok(env_copy, ",");
         int capacity = 2;
-        char** plugins = malloc(capacity * sizeof(char*));
+        plugins = malloc(capacity * sizeof(char*));
         
         while (token) {
             trim_whitespace(token);
+            // Удаляем кавычки если они есть
+            if (token[0] == '"' || token[0] == '\'') {
+                memmove(token, token+1, strlen(token));
+                token[strlen(token)-1] = '\0';
+            }
+            // Удаляем квадратные скобки если они есть
+            if (token[0] == '[') {
+                memmove(token, token+1, strlen(token));
+            }
+            if (token[strlen(token)-1] == ']') {
+                token[strlen(token)-1] = '\0';
+            }
+            trim_whitespace(token);
+            
             if (strlen(token) > 0) {
                 if (*count >= capacity) {
                     capacity *= 2;
@@ -208,20 +238,25 @@ static char** get_plugins_from_config(int* count) {
             }
             token = strtok(NULL, ",");
         }
-        
         free(env_copy);
         return plugins;
     }
     
-    // Затем проверяем конфигурационный файл
+    // 2. Проверяем конфигурационный файл
     ConfigVariable plugins_var = get_variable("plugins");
     if (plugins_var.type == UNDEFINED || plugins_var.type != STRING || plugins_var.count == 0) {
         return NULL;
     }
 
-    char** plugins = malloc(plugins_var.count * sizeof(char*));
+    plugins = malloc(plugins_var.count * sizeof(char*));
     for (int i = 0; i < plugins_var.count; i++) {
-        plugins[i] = strdup(plugins_var.data.string[i]);
+        char* name = plugins_var.data.string[i];
+        // Удаляем кавычки если они есть
+        if (name[0] == '"' || name[0] == '\'') {
+            memmove(name, name+1, strlen(name));
+            name[strlen(name)-1] = '\0';
+        }
+        plugins[i] = strdup(name);
         (*count)++;
     }
 
@@ -230,8 +265,13 @@ static char** get_plugins_from_config(int* count) {
 
 // Освобождение списка плагинов
 static void free_plugins_list(char** plugins, int count) {
+    if (!plugins) return;
+    
     for (int i = 0; i < count; i++) {
-        free(plugins[i]);
+        if (plugins[i]) {
+            free(plugins[i]);
+            plugins[i] = NULL;
+        }
     }
     free(plugins);
 }
