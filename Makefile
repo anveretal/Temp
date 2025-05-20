@@ -15,12 +15,12 @@ libconfig: src/include/config.h src/config.c | install
 	ar rcs install/libconfig.a install/config.o
 
 # new
-liblogger: src/include/logger.h src/logger.c src/include/my_time.h src/my_time.c | install
-	$(CC) $(CFLAGS) -fPIC -shared src/logger.c src/my_time.c -o install/liblogger.so
+liblogger: src/include/logger.h src/logger.c src/include/my_time.h src/my_time/my_time_v1.c | install
+	$(CC) $(CFLAGS) -fPIC -shared src/logger.c src/my_time/my_time_v1.c -o install/liblogger.so
 
 # new
-libtime: src/include/my_time.h src/my_time.c | install
-	$(CC) $(CFLAGS) -fPIC -shared src/my_time.c -o install/libtime.so.1.0
+libtime: src/include/my_time.h src/my_time/my_time_v1.c | install
+	$(CC) $(CFLAGS) -fPIC -shared src/my_time/my_time_v1.c -o install/libtime.so.1.0
 	ln -sf libtime.so.1.0 install/libtime.so
 
 
