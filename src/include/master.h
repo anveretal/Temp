@@ -1,18 +1,15 @@
 #ifndef MASTER_H
 #define MASTER_H
 
-#include <stdbool.h>
-
 typedef void (*Hook)(void);
-
 extern Hook executor_start_hook;
 
-typedef struct {
+typedef struct Plugin {
     void* handle;
     char* name;
-    void (*init)(void);
-    void (*fini)(void);
-    const char* (*get_name)(void);
+    int (*init)(void);
+    int (*fini)(void);
+    const char* (*name_func)(void);
 } Plugin;
 
 #endif // MASTER_H
