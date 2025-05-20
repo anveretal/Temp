@@ -239,21 +239,27 @@ int write_log(OutputStream stream, LogLevel level, const char *filename, int lin
     }
 
     FILE *output = NULL;
-    switch(stream) {
-        case STDOUT:    output = stdout; break;
-        case STDERR:    output = stderr; break;
-        case FILESTREAM: 
-            if (!logger.log_file) {
-                output = stderr;
-            } else {
-                if (check_file_size() == -1) {
+
+    if (debug_mode) {
+        output = stdout;
+    }
+    else {
+        switch(stream) {
+            case STDOUT:    output = stdout; break;
+            case STDERR:    output = stderr; break;
+            case FILESTREAM: 
+                if (!logger.log_file) {
                     output = stderr;
                 } else {
-                    output = logger.log_file;
+                    if (check_file_size() == -1) {
+                        output = stderr;
+                    } else {
+                        output = logger.log_file;
+                    }
                 }
-            }
-            break;
-        default:    output = stderr;
+                break;
+            default:    output = stderr;
+        }
     }
 
     // Получаем базовое имя файла (без пути)
