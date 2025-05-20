@@ -32,6 +32,8 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+extern int logger_debug_mode;
+
 typedef enum {
     LOG_DEBUG = 1,
     LOG_INFO,

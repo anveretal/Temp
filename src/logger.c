@@ -137,6 +137,8 @@ typedef struct {
     int is_initialized;
 } Logger;
 
+int logger_debug_mode = 0;
+
 static Logger logger = {NULL, NULL, 0, 0};
 
 static const char* level_to_string(LogLevel level) {
@@ -240,7 +242,7 @@ int write_log(OutputStream stream, LogLevel level, const char *filename, int lin
 
     FILE *output = NULL;
 
-    if (debug_mode) {
+    if (logger_debug_mode) {
         output = stdout;
     }
     else {

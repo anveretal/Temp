@@ -10,8 +10,6 @@
 #include "logger.h"
 #include "config.h"
 
-static int debug_mode = 0;
-
 // Глобальный указатель на хук
 Hook executor_start_hook = NULL;
 
@@ -292,7 +290,7 @@ int main(int argc, char* argv[]) {
     if (readlink("/proc/self/exe", program_name, sizeof(program_name)) != -1) {
         char* base_name = strrchr(program_name, '/');
         if (base_name && strcmp(base_name + 1, "debug_proxy") == 0) {
-            debug_mode = 1;
+            logger_debug_mode = 1;
             LOG(STDOUT, LOG_INFO, "Starting in debug mode");
         }
     }
