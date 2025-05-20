@@ -48,7 +48,11 @@ typedef enum {
 
 int init_logger(char *path, int file_size_limit);
 int fini_logger(void);
-int write_log(OutputStream stream, LogLevel level, const char *filename, int line_number, const char *format, ...);
+//int write_log(OutputStream stream, LogLevel level, const char *filename, int line_number, const char *format, ...);
+int write_log(OutputStream stream, LogLevel level,
+              const char *filename, int line_number,
+              const char *format, ...)
+    __attribute__((format(gnu_printf, 5, 6)));
 
 // Макрос для удобного вызова логгера
 #define LOG(stream, level, format, ...) \
