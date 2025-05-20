@@ -101,19 +101,21 @@ int unload_plugin(const char* plugin_name) {
         return 1;
     }
 
+    // Сначала логируем, потом освобождаем
+    LOG(STDOUT, LOG_INFO, "Unloading plugin %s", plugin->name);
+
     // Финализируем плагин
     if (plugin->fini()) {
-        LOG(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin_name);
+        LOG(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin->name);
         return 1;
     }
 
     // Закрываем библиотеку
     dlclose(plugin->handle);
 
-    // Удаляем из списка
+    // Удаляем из списка (освобождает память)
     remove_plugin_from_list(plugin_name);
 
-    LOG(STDOUT, LOG_INFO, "Plugin %s unloaded successfully", plugin_name);
     return 0;
 }
 
@@ -185,6 +187,8 @@ static void remove_plugin_from_list(const char* plugin_name) {
             } else {
                 plugins_list = current->next;
             }
+            
+            // Логирование уже выполнено, можно освобождать
             free(current->name);
             free(current);
             return;
