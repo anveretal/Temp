@@ -1,0 +1,38 @@
+root project directory
+|
+├── plugins
+│   ├── greeting
+│   │   └── greeting.c
+│   └── task_manager
+│       └── task_manager.c
+|
+├── src
+│   ├── include
+│   │   ├── config.h
+│   │   ├── logger.h
+│   │   ├── master.h
+│   │   └── my_time.h
+│   ├── config.c
+│   ├── logger.c
+│   ├── master.c
+│   ├── main.c
+│   └── my_time
+│       ├── my_time_v1.c  # версия с time(2)
+│       ├── my_time_v2.c  # версия с syscall(2)
+│       └── my_time_v3.c  # версия с ассемблерными вставками
+|
+├── proxy.conf            # конфигурационный файл по умолчанию
+├── logs                  # директория для логов
+├── Makefile
+└── install
+    ├── proxy             # основная программа
+    ├── debug_proxy       # отладочная версия
+    ├── liblogger.so      # динамическая библиотека логгера
+    ├── libconfig.a       # статическая библиотека конфига
+    ├── libtime.so        # симлинк на текущую версию my_time
+    ├── libtime_v1.so     # версия 1
+    ├── libtime_v2.so     # версия 2
+    ├── libtime_v3.so     # версия 3
+    └── plugins
+        ├── greeting.so
+        └── task_manager.so
