@@ -30,6 +30,7 @@ greeting: plugins/greeting/greeting.c src/include/master.h | install/plugins
 #-undefined dynamic_lookup   -- for MacOS -- necessarily
 #-Wl,--allow-shlib-undefined -- for Linux -- optionally
 
+# new
 proxy: src/include/master.h install/libconfig.a install/liblogger.so src/master.c | install
 	$(CC) $(CFLAGS) -rdynamic src/master.c -o install/proxy -L./install -lconfig -llogger -ldl
 
