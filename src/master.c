@@ -4,21 +4,14 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <limits.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include "master.h"
 #include "logger.h"
 #include "config.h"
 
 // Глобальный указатель на хук
 Hook executor_start_hook = NULL;
-
-// Структура для хранения информации о плагине
-typedef struct {
-    void* handle;
-    char* name;
-    int (*init)(void);
-    int (*fini)(void);
-    const char* (*name_func)(void);
-} Plugin;
 
 // Прототипы вспомогательных функций
 static int load_plugin(const char* plugin_name, Plugin* plugin);
@@ -137,8 +130,12 @@ static int load_plugin(const char* plugin_name, Plugin* plugin) {
         return 1;
     }
 
+    // Безопасное приведение через промежуточный void*
+    void* sym;
+    
     // Загружаем функцию name()
-    plugin->name_func = (const char* (*)(void))dlsym(plugin->handle, "name");
+    *(void**)(&sym) = dlsym(plugin->handle, "name");
+    plugin->name_func = (const char* (*)(void))sym;
     if (!plugin->name_func) {
         LOG(STDERR, LOG_ERROR, "Failed to load 'name' function from %s: %s", plugin_name, dlerror());
         dlclose(plugin->handle);
@@ -146,7 +143,8 @@ static int load_plugin(const char* plugin_name, Plugin* plugin) {
     }
 
     // Загружаем функцию init()
-    plugin->init = (int (*)(void))dlsym(plugin->handle, "init");
+    *(void**)(&sym) = dlsym(plugin->handle, "init");
+    plugin->init = (int (*)(void))sym;
     if (!plugin->init) {
         LOG(STDERR, LOG_ERROR, "Failed to load 'init' function from %s: %s", plugin_name, dlerror());
         dlclose(plugin->handle);
@@ -154,7 +152,8 @@ static int load_plugin(const char* plugin_name, Plugin* plugin) {
     }
 
     // Загружаем функцию fini()
-    plugin->fini = (int (*)(void))dlsym(plugin->handle, "fini");
+    *(void**)(&sym) = dlsym(plugin->handle, "fini");
+    plugin->fini = (int (*)(void))sym;
     if (!plugin->fini) {
         LOG(STDERR, LOG_ERROR, "Failed to load 'fini' function from %s: %s", plugin_name, dlerror());
         dlclose(plugin->handle);
