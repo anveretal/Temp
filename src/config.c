@@ -1,4 +1,5 @@
 #include "config.h"
+#include "logger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,31 +59,37 @@ int parse_line(const char* line, char** key_out, char** value_out) {
 
 // Определяет тип значения
 ConfigVarType get_value_type(const char* value) {
-    if (strstr(value, "[") != NULL && strstr(value, "]") != NULL) {
-        return STRING; // Массивы пока обрабатываем как строки
-    } else if (strchr(value, '"') != NULL) {
+    if (value[0] == '"') {
         return STRING;
     } else if (strchr(value, '.') != NULL) {
         return REAL;
     } else {
-        return INTEGER;
+        char* endptr;
+        (void) strtoll(value, &endptr, 10);
+        if (*endptr == '\0') {
+            return INTEGER;
+        }
     }
+
+    // Пока не поддерживаем массивы, но не вызываем undefined behaviour
+    return STRING;
 }
 
 // Парсит значение
-ConfigData parse_value(const char* value, ConfigVarType type, int* count) {
+ConfigData parse_value(const char* value, ConfigVarType type) {
     ConfigData data = {0};
-    *count = 1;
 
     switch (type) {
         case INTEGER: {
             int64_t* val = malloc(sizeof(int64_t));
+            if (!val) break;
             *val = atoll(value);
             data.integer = val;
             break;
         }
         case REAL: {
             double* val = malloc(sizeof(double));
+            if (!val) break;
             *val = atof(value);
             data.real = val;
             break;
@@ -90,10 +97,21 @@ ConfigData parse_value(const char* value, ConfigVarType type, int* count) {
         case STRING: {
             if (value[0] == '"' && value[strlen(value)-1] == '"') {
                 char* val = strdup(value + 1);
-                val[strlen(val) - 1] = '\0';
-                data.string = &val;
+                if (!val) break;
+                size_t len = strlen(val);
+                if (len > 0 && val[len - 1] == '"') {
+                    val[len - 1] = '\0';
+                }
+                data.string = malloc(sizeof(char*));
+                if (!data.string) {
+                    free(val);
+                    break;
+                }
+                *data.string = val;
             } else {
-                data.string = &value; // массивы временно
+                data.string = malloc(sizeof(char*));
+                if (!data.string) break;
+                *data.string = strdup(value);
             }
             break;
         }
@@ -123,9 +141,15 @@ int destroy_config_table() {
     for (int i = 0; i < config_size; ++i) {
         free(config_table[i].name);
         free(config_table[i].description);
-        if (config_table[i].type == INTEGER) free(config_table[i].data.integer);
-        else if (config_table[i].type == REAL) free(config_table[i].data.real);
-        else if (config_table[i].type == STRING) free(*config_table[i].data.string);
+
+        if (config_table[i].type == INTEGER && config_table[i].data.integer) {
+            free(config_table[i].data.integer);
+        } else if (config_table[i].type == REAL && config_table[i].data.real) {
+            free(config_table[i].data.real);
+        } else if (config_table[i].type == STRING && config_table[i].data.string) {
+            free(*config_table[i].data.string);
+            free(config_table[i].data.string);
+        }
     }
 
     free(config_table);
@@ -155,20 +179,23 @@ int parse_config(const char* path) {
         char* value = NULL;
 
         if (parse_line(line, &key, &value) != 0) {
-            LOG_SET(FILESTREAM, LOG_ERROR, "Configuration file %s has syntax error at %d: %s", path, line_num, line);
+            LOG_SET(FILESTREAM, LOG_ERROR,
+                    "Configuration file %s has syntax error at %d: %s",
+                    path, line_num, line);
+            free(key);
+            free(value);
             continue;
         }
 
         ConfigVarType type = get_value_type(value);
-        int count = 1;
-        ConfigData data = parse_value(value, type, &count);
+        ConfigData data = parse_value(value, type);
 
         ConfigVariable var = {
             .name = key,
             .description = "",
             .data = data,
             .type = type,
-            .count = count
+            .count = 1
         };
 
         if (define_variable(var) != 0) {
@@ -201,6 +228,11 @@ int define_variable(const ConfigVariable variable) {
 
 // Получает значение переменной по имени
 ConfigVariable get_variable(const char* name) {
+    if (!config_table) {
+        ConfigVariable undefined = {.type = UNDEFINED};
+        return undefined;
+    }
+
     for (int i = 0; i < config_size; ++i) {
         if (strcmp(config_table[i].name, name) == 0) {
             return config_table[i];
