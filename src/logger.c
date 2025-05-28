@@ -75,6 +75,9 @@ int init_logger(char *path, int file_size_limit) {
         // Проверяем права на запись
         if (access(path, W_OK) == -1) {
             // Пытаемся создать файл, если его нет
+            char cwd[1024];
+            getcwd(cwd, sizeof(cwd));
+            printf("Current working directory: %s\n", cwd);
             FILE *test = fopen(path, "a");
             if (!test) {
                 fprintf(stderr, "Have no permissions for file %s\n", path);

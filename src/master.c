@@ -324,7 +324,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Проверяем, есть ли в конфиге настройки логгера
-    ConfigVariable log_path = get_variable("log_path");
+    ConfigVariable log_path = get_variable("logs");
     if (log_path.type == STRING) {
         fini_logger();
         if (init_logger(*log_path.data.string, -1)) {
