@@ -167,39 +167,62 @@ static int parse_array(const char* value, ConfigVariable* var) {
 static int parse_single_value(const char* value, ConfigVariable* var) {
     if (!value || !var) return -1;
     
-    ConfigVarType type = detect_value_type(value);
-    if (type == UNDEFINED) return -1;
+    // Создаем копию значения для обработки
+    char* processed_value = strdup(value);
+    if (!processed_value) return -1;
     
+    // Удаляем кавычки в начале и конце строки, если они есть
+    size_t len = strlen(processed_value);
+    if (len >= 2 && processed_value[0] == '"' && processed_value[len-1] == '"') {
+        // Сдвигаем указатель на 1 символ вправо и обрезаем последний символ
+        memmove(processed_value, processed_value+1, len-2);
+        processed_value[len-2] = '\0';
+    }
+    
+    ConfigVarType type = detect_value_type(processed_value);
+    if (type == UNDEFINED) {
+        free(processed_value);
+        return -1;
+    }
+    
+    int result = -1;
     switch (type) {
         case INTEGER:
             var->data.integer = malloc(sizeof(int64_t));
-            if (!var->data.integer) return -1;
-            *var->data.integer = strtoll(value, NULL, 10);
+            if (!var->data.integer) break;
+            *var->data.integer = strtoll(processed_value, NULL, 10);
+            result = 0;
             break;
         case REAL:
             var->data.real = malloc(sizeof(double));
-            if (!var->data.real) return -1;
-            *var->data.real = strtod(value, NULL);
+            if (!var->data.real) break;
+            *var->data.real = strtod(processed_value, NULL);
+            result = 0;
             break;
-        case STRING:
-            {
-                char* str = strdup(value);
-                if (!str) return -1;
-                var->data.string = malloc(sizeof(char*));
-                if (!var->data.string) {
-                    free(str);
-                    return -1;
-                }
-                *var->data.string = str;
+        case STRING: {
+            char* str = strdup(processed_value);
+            if (!str) break;
+            var->data.string = malloc(sizeof(char*));
+            if (!var->data.string) {
+                free(str);
                 break;
             }
+            *var->data.string = str;
+            result = 0;
+            break;
+        }
         default:
-            return -1;
+            break;
     }
     
-    var->type = type;
-    var->count = 1;
-    return 0;
+    free(processed_value);
+    
+    if (result == 0) {
+        var->type = type;
+        var->count = 1;
+    }
+    
+    return result;
 }
 
 static void free_config_variable(ConfigVariable* var) {
