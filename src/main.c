@@ -41,7 +41,7 @@ void execute_hook(void) {
     if (executor_start_hook) {
         executor_start_hook();
     } else {
-        LOG(STDERR, LOG_WARNING, "No hook registered");
+        LOG_SET(STDERR, LOG_WARNING, "No hook registered");
     }
 }
 
@@ -52,7 +52,7 @@ int load_plugin(const char* plugin_name, Plugin* plugin) {
 
     plugin->handle = dlopen(plugin_path, RTLD_NOW);
     if (!plugin->handle) {
-        LOG(STDERR, LOG_ERROR, 
+        LOG_SET(STDERR, LOG_ERROR, 
             "Library couldn't be opened.\n\tLibrary's path is %s\n\tdlopen: %s\n\tcheck plugins folder or rename library", 
             plugin_path, dlerror());
         return 1;
@@ -64,7 +64,7 @@ int load_plugin(const char* plugin_name, Plugin* plugin) {
 
     plugin->name_func = name_plugin_pointer.function_pointer;
     if (!plugin->name_func) {
-        LOG(STDERR, LOG_ERROR,
+        LOG_SET(STDERR, LOG_ERROR,
             "Library couldn't execute name.\n\tLibrary's name is %s. Dlsym message: %s\n\tcheck plugins folder or rename library",
             plugin_name, dlerror());
         dlclose(plugin->handle);
@@ -79,7 +79,7 @@ int load_plugin(const char* plugin_name, Plugin* plugin) {
 
     plugin->init = init_plugin_pointer.function_pointer;
     if (!plugin->init) {
-        LOG(STDERR, LOG_ERROR,
+        LOG_SET(STDERR, LOG_ERROR,
             "Library couldn't execute init.\n\tLibrary's name is %s. Dlsym message: %s\n\tcheck plugins folder or rename library",
             plugin_name, dlerror());
         dlclose(plugin->handle);
@@ -93,7 +93,7 @@ int load_plugin(const char* plugin_name, Plugin* plugin) {
 
     plugin->fini = fini_plugin_pointer.function_pointer;
     if (!plugin->fini) {
-        LOG(STDERR, LOG_ERROR,
+        LOG_SET(STDERR, LOG_ERROR,
             "Library couldn't execute fini.\n\tLibrary's name is %s. Dlsym message: %s\n\tcheck plugins folder or rename library",
             plugin_name, dlerror());
         dlclose(plugin->handle);
@@ -103,22 +103,22 @@ int load_plugin(const char* plugin_name, Plugin* plugin) {
 
     // Инициализируем плагин
     if (plugin->init()) {
-        LOG(STDERR, LOG_ERROR, "Plugin %s initialization failed", plugin_name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s initialization failed", plugin_name);
         dlclose(plugin->handle);
         free(plugin->name);
         return 1;
     }
 
-    LOG(STDOUT, LOG_INFO, "Plugin %s loaded", plugin_name);
+    LOG_SET(STDOUT, LOG_INFO, "Plugin %s loaded", plugin_name);
     return 0;
 }
 
 // Функция для выгрузки плагина
 void unload_plugin(Plugin* plugin) {
     if (plugin->fini()) {
-        LOG(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin->name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin->name);
     } else {
-        LOG(STDOUT, LOG_INFO, "Plugin %s unloaded", plugin->name);
+        LOG_SET(STDOUT, LOG_INFO, "Plugin %s unloaded", plugin->name);
     }
 
     dlclose(plugin->handle);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
     // В режиме отладки все логи идут в stdout
     if (debug_mode) {
         log_path = NULL;
-        LOG(STDOUT, LOG_INFO, "Starting in debug mode");
+        LOG_SET(STDOUT, LOG_INFO, "Starting in debug mode");
     }
 
     // Инициализируем логгер
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 
     // Инициализируем систему конфигурации
     if (create_config_table()) {
-        LOG(STDERR, LOG_ERROR, "Failed to initialize config system");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to initialize config system");
         fini_logger();
         return 1;
     }
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (parse_config(config_path)) {
-        LOG(STDERR, LOG_ERROR, "Failed to parse config file");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to parse config file");
         destroy_config_table();
         fini_logger();
         return 1;
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
     int plugin_count = 0;
     char** plugins = get_plugins_from_config(&plugin_count);
     if (!plugins || plugin_count == 0) {
-        LOG(STDERR, LOG_ERROR, "No plugins configured");
+        LOG_SET(STDERR, LOG_ERROR, "No plugins configured");
         destroy_config_table();
         fini_logger();
         return 1;
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
     free(plugins);
 
     if (loaded_count == 0) {
-        LOG(STDERR, LOG_ERROR, "No plugins were loaded successfully");
+        LOG_SET(STDERR, LOG_ERROR, "No plugins were loaded successfully");
         free(loaded_plugins);
         destroy_config_table();
         fini_logger();
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
 
     // Освобождаем ресурсы
     if (destroy_config_table()) {
-        LOG(STDERR, LOG_ERROR, "Failed to destroy config system");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to destroy config system");
     }
 
     if (fini_logger()) {

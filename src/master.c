@@ -10,13 +10,10 @@
 #include "logger.h"
 #include "config.h"
 
-// Глобальный указатель на хук
 Hook executor_start_hook = NULL;
 
-// Список загруженных плагинов
 static Plugin* plugins_list = NULL;
 
-// Вспомогательные функции
 static void trim_whitespace(char* str);
 static int is_valid_plugin_name(const char* name);
 static int add_plugin_to_list(Plugin* plugin);
@@ -28,13 +25,13 @@ static void free_plugins_string(char** plugins, int count);
 
 int load_plugin(const char* plugin_name) {
     if (!plugin_name || !is_valid_plugin_name(plugin_name)) {
-        LOG(STDERR, LOG_ERROR, "Invalid plugin name: %s", plugin_name ? plugin_name : "NULL");
+        LOG_SET(STDERR, LOG_ERROR, "Invalid plugin name: %s", plugin_name ? plugin_name : "NULL");
         return 1;
     }
 
     // Проверяем, не загружен ли уже плагин
     if (find_plugin(plugin_name)) {
-        LOG(STDERR, LOG_WARNING, "Plugin %s is already loaded", plugin_name);
+        LOG_SET(STDERR, LOG_WARNING, "Plugin %s is already loaded", plugin_name);
         return 1;
     }
 
@@ -45,7 +42,7 @@ int load_plugin(const char* plugin_name) {
     // Загружаем shared library
     void* handle = dlopen(plugin_path, RTLD_NOW);
     if (!handle) {
-        LOG(STDERR, LOG_ERROR, "Failed to load plugin %s: %s", plugin_name, dlerror());
+        LOG_SET(STDERR, LOG_ERROR, "Failed to load plugin %s: %s", plugin_name, dlerror());
         return 1;
     }
 
@@ -53,7 +50,7 @@ int load_plugin(const char* plugin_name) {
     Plugin* plugin = malloc(sizeof(Plugin));
     if (!plugin) {
         dlclose(handle);
-        LOG(STDERR, LOG_ERROR, "Memory allocation failed for plugin %s", plugin_name);
+        LOG_SET(STDERR, LOG_ERROR, "Memory allocation failed for plugin %s", plugin_name);
         return 1;
     }
 
@@ -65,7 +62,7 @@ int load_plugin(const char* plugin_name) {
     if (!plugin->init || !plugin->fini || !plugin->get_name) {
         dlclose(handle);
         free(plugin);
-        LOG(STDERR, LOG_ERROR, "Plugin %s is missing required functions", plugin_name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s is missing required functions", plugin_name);
         return 1;
     }
 
@@ -73,7 +70,7 @@ int load_plugin(const char* plugin_name) {
     if (plugin->init()) {
         dlclose(handle);
         free(plugin);
-        LOG(STDERR, LOG_ERROR, "Plugin %s initialization failed", plugin_name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s initialization failed", plugin_name);
         return 1;
     }
 
@@ -90,23 +87,33 @@ int load_plugin(const char* plugin_name) {
         return 1;
     }
 
-    LOG(STDOUT, LOG_INFO, "Plugin %s loaded successfully", plugin_name);
+    if (is_logger_has_path()) {
+        LOG_SET(FILESTREAM, LOG_INFO, "Plugin %s loaded successfully", plugin_name);
+    }
+    else {
+        LOG_SET(STDOUT, LOG_INFO, "Plugin %s loaded successfully", plugin_name);
+    }
     return 0;
 }
 
 int unload_plugin(const char* plugin_name) {
     Plugin* plugin = find_plugin(plugin_name);
     if (!plugin) {
-        LOG(STDERR, LOG_ERROR, "Plugin %s not found", plugin_name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s not found", plugin_name);
         return 1;
     }
 
     // Сначала логируем, потом освобождаем
-    LOG(STDOUT, LOG_INFO, "Unloading plugin %s", plugin->name);
+    if (is_logger_has_path()) {
+        LOG_SET(FILESTREAM, LOG_INFO, "Unloading plugin %s", plugin->name);
+    }
+    else {
+        LOG_SET(STDOUT, LOG_INFO, "Unloading plugin %s", plugin->name);
+    }
 
     // Финализируем плагин
     if (plugin->fini()) {
-        LOG(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin->name);
+        LOG_SET(STDERR, LOG_ERROR, "Plugin %s finalization failed", plugin->name);
         return 1;
     }
 
@@ -143,7 +150,7 @@ void execute_hook(void) {
     if (executor_start_hook) {
         executor_start_hook();
     } else {
-        LOG(STDERR, LOG_WARNING, "No hook registered");
+        LOG_SET(STDERR, LOG_WARNING, "No hook registered");
     }
 }
 
@@ -282,7 +289,7 @@ static void trim_whitespace(char* str) {
     *(end + 1) = '\0';
 }
 
-/* Основная функция программы */
+
 
 int main(int argc, char* argv[]) {
     // Определяем режим отладки
@@ -291,7 +298,7 @@ int main(int argc, char* argv[]) {
         char* base_name = strrchr(program_name, '/');
         if (base_name && strcmp(base_name + 1, "debug_proxy") == 0) {
             logger_debug_mode = 1;
-            LOG(STDOUT, LOG_INFO, "Starting in debug mode");
+            fprintf(stdout, "Starting in debug mode");
         }
     }
 
@@ -303,14 +310,14 @@ int main(int argc, char* argv[]) {
 
     // Инициализация системы конфигурации
     if (create_config_table()) {
-        LOG(STDERR, LOG_ERROR, "Failed to initialize config system");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to initialize config system");
         fini_logger();
         return 1;
     }
 
     // Парсинг конфигурационного файла
     if (parse_config("proxy.conf")) {
-        LOG(STDERR, LOG_ERROR, "Failed to parse config file");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to parse config file");
         destroy_config_table();
         fini_logger();
         return 1;
@@ -325,7 +332,7 @@ int main(int argc, char* argv[]) {
         if (plugins) {
             for (int i = 0; i < plugin_count; i++) {
                 if (load_plugin(plugins[i])) {
-                    LOG(STDERR, LOG_ERROR, "Failed to load plugin: %s", plugins[i]);
+                    LOG_SET(STDERR, LOG_ERROR, "Failed to load plugin: %s", plugins[i]);
                 }
             }
             free_plugins_string(plugins, plugin_count);
@@ -341,22 +348,20 @@ int main(int argc, char* argv[]) {
         if (plugins) {
             for (int i = 0; i < plugin_count; i++) {
                 if (load_plugin(plugins[i])) {
-                    LOG(STDERR, LOG_ERROR, "Failed to load plugin: %s", plugins[i]);
+                    LOG_SET(STDERR, LOG_ERROR, "Failed to load plugin: %s", plugins[i]);
                 }
             }
             free_plugins_string(plugins, plugin_count);
         }
     }
 
-    // Выполнение хуков
     execute_hook();
 
-    // Выгрузка плагинов
     unload_all_plugins();
 
     // Освобождение ресурсов
     if (destroy_config_table()) {
-        LOG(STDERR, LOG_ERROR, "Failed to destroy config system");
+        LOG_SET(STDERR, LOG_ERROR, "Failed to destroy config system");
     }
 
     if (fini_logger()) {

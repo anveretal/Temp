@@ -617,7 +617,7 @@ static int process_config_line(char* line, int line_num, const char* file_path) 
                     // Игнорируем текущий файл конфигурации
                     if(strcmp(full_path, file_path) == 0) continue;
                     
-                    LOG(STDERR, LOG_INFO, "Including config file: %s", full_path);
+                    LOG_SET(STDERR, LOG_INFO, "Including config file: %s", full_path);
                     if(parse_config(full_path)) {
                         closedir(dir);
                         return 1;
@@ -627,7 +627,7 @@ static int process_config_line(char* line, int line_num, const char* file_path) 
             closedir(dir);
             return 0;
         } else {
-            LOG(STDERR, LOG_ERROR, "Could not open directory: %s", dir_path);
+            LOG_SET(STDERR, LOG_ERROR, "Could not open directory: %s", dir_path);
             return 1;
         }
     }
@@ -635,7 +635,7 @@ static int process_config_line(char* line, int line_num, const char* file_path) 
     // Разбираем строку на ключ и значение
     char* separator = strchr(line, '=');
     if(!separator) {
-        LOG(STDERR, LOG_ERROR, "Syntax error in config file at line %d: missing '='", line_num);
+        LOG_SET(STDERR, LOG_ERROR, "Syntax error in config file at line %d: missing '='", line_num);
         return 1;
     }
     
@@ -648,13 +648,13 @@ static int process_config_line(char* line, int line_num, const char* file_path) 
     
     // Проверяем валидность ключа
     if(strlen(key) > 121) {
-        LOG(STDERR, LOG_ERROR, "Config key too long at line %d", line_num);
+        LOG_SET(STDERR, LOG_ERROR, "Config key too long at line %d", line_num);
         return 1;
     }
     
     for(char* p = key; *p; p++) {
         if(!isalnum(*p) && *p != '_' && *p != '-') {
-            LOG(STDERR, LOG_ERROR, "Invalid character in key at line %d", line_num);
+            LOG_SET(STDERR, LOG_ERROR, "Invalid character in key at line %d", line_num);
             return 1;
         }
     }
@@ -687,7 +687,7 @@ static int process_config_line(char* line, int line_num, const char* file_path) 
     
     // Устанавливаем переменную
     if(set_variable(var)) {
-        LOG(STDERR, LOG_ERROR, "Failed to set variable at line %d", line_num);
+        LOG_SET(STDERR, LOG_ERROR, "Failed to set variable at line %d", line_num);
         return 1;
     }
     
@@ -699,14 +699,14 @@ int create_config_table(void) {
         return 1;
     }
     
+    config.count = 0;
     config.capacity = 10;
     config.variables = malloc(config.capacity * sizeof(ConfigVariable));
     if(!config.variables) {
         return 1;
     }
-    
-    config.count = 0;
     config.is_initialized = 1;
+    
     return 0;
 }
 
@@ -750,17 +750,22 @@ int parse_config(const char* path) {
     CONFIG_CHECK();
     
     if(!path) {
-        LOG(STDERR, LOG_ERROR, "Config file path is NULL");
+        LOG_SET(STDERR, LOG_ERROR, "Config file path is NULL");
         return 1;
     }
     
     FILE* file = fopen(path, "r");
     if(!file) {
-        LOG(STDERR, LOG_ERROR, "File %s not found", path);
+        LOG_SET(STDERR, LOG_ERROR, "File %s not found", path);
         return 1;
     }
     
-    LOG(STDERR, LOG_INFO, "Start read config file %s", path);
+    if (is_logger_has_path()) {
+        LOG_SET(FILESTREAM, LOG_INFO, "Start read config file %s", path);
+    }
+    else {
+        LOG_SET(STDOUT, LOG_INFO, "Start read config file %s", path);
+    }
     
     char line[1024];
     int line_num = 0;
@@ -777,7 +782,12 @@ int parse_config(const char* path) {
     fclose(file);
     
     if(!error) {
-        LOG(STDERR, LOG_INFO, "Finish read config file %s", path);
+        if (is_logger_has_path()) {
+            LOG_SET(FILESTREAM, LOG_INFO, "Finish read config file %s", path);
+        }
+        else {
+            LOG_SET(STDERR, LOG_INFO, "Finish read config file %s", path);
+        }
     }
     
     return error;

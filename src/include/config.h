@@ -36,7 +36,7 @@ bool does_variable_exist(const char* name);
 // Макрос для проверки инициализации конфига
 #define CONFIG_CHECK() \
     if (!config.is_initialized) { \
-        LOG(STDERR, LOG_ERROR, "Config system not initialized"); \
+        LOG_SET(STDERR, LOG_ERROR, "Config system not initialized"); \
         return 1; \
     }
 

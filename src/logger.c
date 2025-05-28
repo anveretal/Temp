@@ -1,124 +1,3 @@
-// #include "logger.h"
-// #include "my_time.h"
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <time.h>
-// #include <unistd.h>
-// #include <stdarg.h>
-// #include <errno.h>
-
-// typedef struct {
-//     FILE *log_file;
-//     int file_size;            // Текущий размер файла (в байтах)
-//     int file_size_limit;      // Максимальный размер файла (в байтах), 0 — нет ограничения
-//     int is_initialized;
-// } Logger;
-
-// static Logger logger = {
-//     NULL, 0, 0, 0
-// };
-
-// int init_logger(char *path, int file_size_limit) {
-//     if (logger.is_initialized) {
-//         return 1;  // Логгер уже инициализирован
-//     }
-
-//     if (path != NULL) {
-//         logger.log_file = fopen(path, "a");
-//         if (!logger.log_file) {
-//             fprintf(stderr, "Have no permissions for file %s\n", path);
-//             return 1;
-//         }
-
-//         fseek(logger.log_file, 0, SEEK_END);
-//         logger.file_size = ftell(logger.log_file);
-//         logger.file_size_limit = file_size_limit * 1024; // KB to bytes
-//     } else {
-//         logger.file_size_limit = 0;
-//         logger.file_size = 0;
-//         logger.log_file = NULL;
-//     }
-
-//     logger.is_initialized = 1;
-//     return 0;
-// }
-
-// int fini_logger(void) {
-//     if (!logger.is_initialized) {
-//         return 1;
-//     }
-
-//     if (logger.log_file) {
-//         fclose(logger.log_file);
-//         logger.log_file = NULL;
-//     }
-
-//     logger.is_initialized = 0;
-//     return 0;
-// }
-
-// int write_log(OutputStream stream, LogLevel level,
-//               char *filename, int line_number, char *format, ...) {
-
-//     if (!logger.is_initialized) {
-//         return 1;
-//     }
-
-//     time_t now = get_time();
-//     struct tm *tm_info = gmtime(&now);
-//     char time_buf[64];
-//     strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S(UTC)", tm_info);
-
-//     const char *level_str;
-//     switch (level) {
-//         case LOG_DEBUG:   level_str = "DEBUG";   break;
-//         case LOG_INFO:    level_str = "INFO";    break;
-//         case LOG_WARNING: level_str = "WARNING"; break;
-//         case LOG_ERROR:   level_str = "ERROR";   break;
-//         case LOG_FATAL:   level_str = "FATAL";   break;
-//         default:          level_str = "UNKNOWN";
-//     }
-
-//     va_list args;
-//     va_start(args, format);
-//     char message[1024];
-//     vsnprintf(message, sizeof(message), format, args);
-//     va_end(args);
-
-//     char log_line[2048];
-//     int len = snprintf(log_line, sizeof(log_line),
-//                        "%s %s:%d [%d] | %s: %s\n",
-//                        time_buf, filename, line_number, getpid(), level_str, message);
-
-//     int written = 0;
-//     if (stream == FILESTREAM && logger.log_file) {
-//         if ((logger.file_size_limit > 0 &&
-//              logger.file_size + len > logger.file_size_limit)) {
-//             // Файл переполнен — очищаем его
-//             ftruncate(fileno(logger.log_file), 0);
-//             fseek(logger.log_file, 0, SEEK_SET);
-//             logger.file_size = 0;
-//         }
-
-//         written = fprintf(logger.log_file, "%s", log_line);
-//         fflush(logger.log_file);
-//         logger.file_size += len;
-//     } else {
-//         FILE *output = (stream == STDOUT) ? stdout : stderr;
-//         written = fprintf(output, "%s", log_line);
-//         fflush(output);
-//     }
-
-//     if (written < 0) {
-//         // Ошибка записи, выводим в stderr
-//         fprintf(stderr, "Failed to write log entry: %s\n", strerror(errno));
-//         return 1;
-//     }
-
-//     return 0;
-// }
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -232,6 +111,13 @@ int fini_logger(void) {
     }
 
     logger.is_initialized = 0;
+    return 0;
+}
+
+int is_logger_has_path(void) {
+    if (logger.log_path) {
+        return 1;
+    }
     return 0;
 }
 
