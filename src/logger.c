@@ -115,7 +115,7 @@ int fini_logger(void) {
 }
 
 int is_logger_has_path(void) {
-    if (logger.log_path) {
+    if (logger.log_file) {
         return 1;
     }
     return 0;

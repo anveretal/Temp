@@ -323,6 +323,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Проверяем, есть ли в конфиге настройки логгера
+    ConfigVariable log_path = get_variable("log_path");
+    if (log_path.type == STRING) {
+        fini_logger();
+        if (init_logger(*log_path.data.string, -1)) {
+            fprintf(stderr, "Failed to reinitialize the logger\n");
+            return 1;
+        }
+    }
+
     // Загрузка плагинов из конфига
     ConfigVariable plugins_var = get_variable("plugins");
     if (plugins_var.type != UNDEFINED && plugins_var.type == STRING) {
